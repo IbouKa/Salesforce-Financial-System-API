@@ -55,7 +55,7 @@ records map ((account) -> {
         </ee:message>
       </ee:transform>
 
-      <http:response statusCode="200" doc:name="HTTP Response"/>
+      <set-variable value="200" doc:name="httpStatus" doc:id="4063b358-3543-41d9-98e4-dd52b7989571" variableName="httpStatus"/>
       
       <error-handler>
         <on-error-propagate type="SALESFORCE:*" enableNotifications="true" logException="true" doc:name="Salesforce Error">
@@ -73,8 +73,9 @@ output application/json
 }]]></ee:set-payload>
             </ee:message>
           </ee:transform>
-          <http:response statusCode="500" doc:name="HTTP Response"/>
-        </on-error-propagate>
+					<set-variable value="500" doc:name="httpStatus" doc:id="7fc5721f-f402-4236-9c84-4ffe4b1db0a1" variableName="httpStatus" />
+        
+</on-error-propagate>
       </error-handler>
     </try>
   </flow>
@@ -146,10 +147,9 @@ var result = payload[0]
 }]]></ee:set-payload>
         </ee:message>
       </ee:transform>
-
-      <http:response statusCode="#[vars.payload.sfId == null ? 201 : 200]" doc:name="HTTP Response"/>
       
-      <error-handler>
+      <set-variable value="#[vars.payload.sfId == null ? 201 : 200]" doc:name="httpStatus" doc:id="176d1e86-0de7-492f-8888-7189baf6e534" variableName="httpStatus" />
+			<error-handler>
         <on-error-propagate type="SALESFORCE:*" enableNotifications="true" logException="true" doc:name="Salesforce Error">
           <ee:transform doc:name="Transform Error">
             <ee:message>
@@ -165,8 +165,9 @@ output application/json
 }]]></ee:set-payload>
             </ee:message>
           </ee:transform>
-          <http:response statusCode="500" doc:name="HTTP Response"/>
-        </on-error-propagate>
+					<set-variable value="500" doc:name="httpStatus" doc:id="ae7dd7b7-b5b4-41f1-a4d2-16c343451550" variableName="httpStatus" />
+        
+</on-error-propagate>
       </error-handler>
     </try>
   </flow>
@@ -240,10 +241,9 @@ var result = payload[0]
 }]]></ee:set-payload>
         </ee:message>
       </ee:transform>
-
-      <http:response statusCode="#[vars.payload.sfId == null ? 201 : 200]" doc:name="HTTP Response"/>
       
-      <error-handler>
+      <set-variable value="#[vars.payload.sfId == null ? 201 : 200]" doc:name="httpStatus" doc:id="b6264cc0-4da6-476c-8727-8acce0d2366c" variableName="httpStatus" />
+			<error-handler>
         <on-error-propagate type="SALESFORCE:*" enableNotifications="true" logException="true" doc:name="Salesforce Error">
           <ee:transform doc:name="Transform Error">
             <ee:message>
@@ -259,8 +259,9 @@ output application/json
 }]]></ee:set-payload>
             </ee:message>
           </ee:transform>
-          <http:response statusCode="500" doc:name="HTTP Response"/>
-        </on-error-propagate>
+					<set-variable value="500" doc:name="httpStatus" doc:id="e2916e25-7e58-4cad-86d9-162371f2429f" variableName="httpStatus" />
+        
+</on-error-propagate>
       </error-handler>
     </try>
   </flow>
@@ -331,10 +332,9 @@ var result = payload[0]
 }]]></ee:set-payload>
         </ee:message>
       </ee:transform>
-
-      <http:response statusCode="#[vars.payload.sfId == null ? 201 : 200]" doc:name="HTTP Response"/>
       
-      <error-handler>
+      <set-variable value="#[vars.payload.sfId == null ? 201 : 200]" doc:name="httpStatus" doc:id="ea87c09e-96ab-40a2-be79-05af1a9d9b36" variableName="httpStatus" />
+			<error-handler>
         <on-error-propagate type="SALESFORCE:*" enableNotifications="true" logException="true" doc:name="Salesforce Error">
           <ee:transform doc:name="Transform Error">
             <ee:message>
@@ -350,8 +350,9 @@ output application/json
 }]]></ee:set-payload>
             </ee:message>
           </ee:transform>
-          <http:response statusCode="500" doc:name="HTTP Response"/>
-        </on-error-propagate>
+					<set-variable value="500" doc:name="httpStatus" doc:id="703175b9-2ba8-430c-b506-40201e8bd102" variableName="httpStatus" />
+        
+</on-error-propagate>
       </error-handler>
     </try>
   </flow>

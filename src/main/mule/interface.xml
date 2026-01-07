@@ -8,7 +8,8 @@
       xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
       http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
       http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd
-      http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+      http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd">
 
   <!-- APIkit Router Configuration -->
   <apikit:config name="salesforce-financial-system-api-config" 
@@ -19,8 +20,8 @@
   <!-- Main HTTP Listener with APIkit Router -->
   <flow name="main">
     <http:listener config-ref="HTTP_Listener_config" path="/api/*" doc:name="HTTP Listener"/>
-    <apikit:router config-ref="salesforce-financial-system-api-config" doc:name="APIkit Router"/>
-    <error-handler>
+    <apikit:router doc:name="APIkit Router" doc:id="6ed672d3-ed78-46af-9f7a-04f4972d6f53" config-ref="salesforce-financial-system-api-config"/>
+		<error-handler>
       <on-error-propagate type="APIKIT:NOT_FOUND" enableNotifications="true" logException="true" doc:name="On Error Propagate">
         <ee:transform doc:name="Transform Error Response">
           <ee:message>
@@ -36,7 +37,7 @@ output application/json
 }]]></ee:set-payload>
           </ee:message>
         </ee:transform>
-        <http:response statusCode="404" doc:name="HTTP Response"/>
+        <set-variable value="404" doc:name="httpStatus" doc:id="f24b8208-6668-4f52-93cb-9d16f41f2826" variableName="httpStatus"/>
       </on-error-propagate>
       <on-error-propagate type="APIKIT:BAD_REQUEST" enableNotifications="true" logException="true" doc:name="On Error Propagate">
         <ee:transform doc:name="Transform Error Response">
@@ -53,7 +54,7 @@ output application/json
 }]]></ee:set-payload>
           </ee:message>
         </ee:transform>
-        <http:response statusCode="400" doc:name="HTTP Response"/>
+				<set-variable value="400" doc:name="httpStatus" doc:id="02d85315-ea4f-47fd-9440-b03cfeb14def" variableName="httpStatus" />
       </on-error-propagate>
       <on-error-propagate type="APIKIT:NOT_ACCEPTABLE" enableNotifications="true" logException="true" doc:name="On Error Propagate">
         <ee:transform doc:name="Transform Error Response">
@@ -70,7 +71,7 @@ output application/json
 }]]></ee:set-payload>
           </ee:message>
         </ee:transform>
-        <http:response statusCode="406" doc:name="HTTP Response"/>
+				<set-variable value="406" doc:name="httpStatus" doc:id="9e3e8903-f56f-432e-994f-856f08fe4312" variableName="httpStatus" />
       </on-error-propagate>
       <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE" enableNotifications="true" logException="true" doc:name="On Error Propagate">
         <ee:transform doc:name="Transform Error Response">
@@ -87,7 +88,7 @@ output application/json
 }]]></ee:set-payload>
           </ee:message>
         </ee:transform>
-        <http:response statusCode="415" doc:name="HTTP Response"/>
+				<set-variable value="415" doc:name="httpStatus" doc:id="5491e2c4-9776-4a48-a567-90593ee0a5cd" variableName="httpStatus" />
       </on-error-propagate>
       <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED" enableNotifications="true" logException="true" doc:name="On Error Propagate">
         <ee:transform doc:name="Transform Error Response">
@@ -104,7 +105,7 @@ output application/json
 }]]></ee:set-payload>
           </ee:message>
         </ee:transform>
-        <http:response statusCode="405" doc:name="HTTP Response"/>
+				<set-variable value="405" doc:name="httpStatus" doc:id="9ea04cd3-c63b-409e-b899-0d77f65f5ad4" variableName="httpStatus" />
       </on-error-propagate>
     </error-handler>
   </flow>
