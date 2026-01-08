@@ -8,19 +8,16 @@
       xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
       http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
       http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd
-      http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+      http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd">
 
   <!-- APIkit Router Configuration -->
-  <apikit:config name="salesforce-financial-system-api-config" 
-                  raml="salesforce-financial-system-api.raml" 
-                  outboundHeadersMapName="outboundHeaders" 
-                  httpStatusVarName="httpStatus"/>
 
   <!-- Main HTTP Listener with APIkit Router -->
   <flow name="main">
     <http:listener config-ref="HTTP_Listener_config" path="/api/*" doc:name="HTTP Listener"/>
-    <apikit:router config-ref="salesforce-financial-system-api-config" doc:name="APIkit Router"/>
-    <error-handler>
+    <apikit:router doc:name="APIkit Router" doc:id="0a990b24-601a-4919-ac4a-f9545ec0fb3d" config-ref="salesforce-financial-system-api-config"/>
+		<error-handler>
       <on-error-propagate type="APIKIT:NOT_FOUND" enableNotifications="true" logException="true" doc:name="On Error Propagate">
         <ee:transform doc:name="Transform Error Response">
           <ee:message>
