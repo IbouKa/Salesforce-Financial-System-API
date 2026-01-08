@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mule xmlns="http://www.mulesoft.org/schema/mule/core"
-  xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
   xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
   xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-  http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
-  http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
-">
+  http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
 
   <!-- GET /accounts - Business Logic Flow -->
   <flow name="get-accounts-business-logic" doc:name="get-accounts-business-logic">
@@ -29,33 +26,46 @@ var customerSfId = payload.customerSfId default null
     </ee:transform>
 
     <try doc:name="Try">
-      <!-- MOCK: Remplacement de l'appel Salesforce query par des données mockées -->
-      <ee:transform doc:name="Mock Query Financial Accounts" doc:id="mock-query-sf-accounts">
+      <ee:transform doc:name="Mock Query Salesforce Financial Accounts">
         <ee:message>
           <ee:set-payload><![CDATA[%dw 2.0
 output application/java
+var queryParams = payload
+var sfId = queryParams.sfId default null
+var customerSfId = queryParams.customerSfId default null
 ---
+// Mock Salesforce query response
 {
-  totalSize: 2,
-  done: true,
-  records: [
-    {
-      Id: "a0XX0000004TmiQAAS",
-      AccountNumber: "ACC001",
+  records: if (sfId != null and sfId != "")
+    [{
+      Id: sfId,
+      AccountNumber: "ACC-000001",
       Type: "Checking",
-      Name: "Compte Courant Principal",
+      Name: "Primary Checking Account",
       Balance__c: 5000.00,
       Status__c: "Active"
-    },
-    {
-      Id: "a0XX0000004TmiQAAT",
-      AccountNumber: "ACC002",
-      Type: "Savings",
-      Name: "Compte Épargne",
-      Balance__c: 10000.00,
-      Status__c: "Active"
-    }
-  ]
+    }]
+  else
+    [
+      {
+        Id: "SF-ACC-001",
+        AccountNumber: "ACC-000001",
+        Type: "Checking",
+        Name: "Primary Checking Account",
+        Balance__c: 5000.00,
+        Status__c: "Active"
+      },
+      {
+        Id: "SF-ACC-002",
+        AccountNumber: "ACC-000002",
+        Type: "Savings",
+        Name: "Savings Account",
+        Balance__c: 10000.00,
+        Status__c: "Active"
+      }
+    ],
+  totalSize: 2,
+  done: true
 }]]></ee:set-payload>
         </ee:message>
       </ee:transform>
@@ -82,10 +92,10 @@ records map ((account) -> {
         </ee:message>
       </ee:transform>
 
-      <set-variable value="200" doc:name="httpStatus" doc:id="4063b358-3543-41d9-98e4-dd52b7989571" variableName="httpStatus"/>
+      <set-variable value="200" doc:name="httpStatus" doc:id="d3d4a356-1b30-4ea3-bf48-82e66c597694" variableName="httpStatus"/>
       
       <error-handler>
-        <on-error-propagate type="SALESFORCE:*" enableNotifications="true" logException="true" doc:name="Salesforce Error">
+        <on-error-propagate type="*" enableNotifications="true" logException="true" doc:name="Error Handler">
           <ee:transform doc:name="Transform Error">
             <ee:message>
               <ee:set-payload><![CDATA[%dw 2.0
@@ -100,9 +110,8 @@ output application/json
 }]]></ee:set-payload>
             </ee:message>
           </ee:transform>
-					<set-variable value="500" doc:name="httpStatus" doc:id="7fc5721f-f402-4236-9c84-4ffe4b1db0a1" variableName="httpStatus" />
-        
-</on-error-propagate>
+          <set-variable value="500" doc:name="httpStatus" doc:id="d3d4a356-1b30-4ea3-bf48-82e66c597694" variableName="httpStatus"/>
+        </on-error-propagate>
       </error-handler>
     </try>
   </flow>
@@ -129,42 +138,27 @@ var sfId = payload.externalIds filter ($.system == "Salesforce")[0].value defaul
     </ee:transform>
 
     <try doc:name="Try">
-      <choice doc:name="Upsert Strategy">
-        <when expression="#[vars.payload.sfId != null]">
-          <!-- MOCK: Remplacement de l'appel Salesforce update par des données mockées -->
-          <ee:transform doc:name="Mock Update Financial Account" doc:id="mock-update-sf-account">
-            <ee:message>
-              <ee:set-payload><![CDATA[%dw 2.0
+      <ee:transform doc:name="Mock Upsert Salesforce Financial Account">
+        <ee:message>
+          <ee:set-payload><![CDATA[%dw 2.0
 output application/java
+var req = vars.payload
+var sfId = req.sfId default ("SF-ACC-" ++ (now() as String {format: "yyyyMMddHHmmssSSS"}))
 ---
+// Mock Salesforce upsert response
 [{
-  id: vars.payload.sfId,
+  id: sfId,
   success: true
 }]]]></ee:set-payload>
-            </ee:message>
-          </ee:transform>
-        </when>
-        <otherwise>
-          <!-- MOCK: Remplacement de l'appel Salesforce create par des données mockées -->
-          <ee:transform doc:name="Mock Create Financial Account" doc:id="mock-create-sf-account">
-            <ee:message>
-              <ee:set-payload><![CDATA[%dw 2.0
-output application/java
----
-[{
-  id: "a0XX0000004TmiQAA" ++ randomInt(1000),
-  success: true
-}]]]></ee:set-payload>
-            </ee:message>
-          </ee:transform>
-        </otherwise>
-      </choice>
+        </ee:message>
+      </ee:transform>
 
       <ee:transform doc:name="Transform Response">
         <ee:message>
           <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 var result = payload[0]
+var account = vars.payload.account
 ---
 {
   id: null,
@@ -173,18 +167,19 @@ var result = payload[0]
     system: "Salesforce",
     value: result.id
   }],
-  accountNumber: vars.payload.account.AccountNumber,
-  accountType: vars.payload.account.Type,
-  accountName: vars.payload.account.Name,
-  balance: vars.payload.account.Balance__c,
-  status: vars.payload.account.Status__c
+  accountNumber: account.AccountNumber,
+  accountType: account.Type,
+  accountName: account.Name,
+  balance: account.Balance__c,
+  status: account.Status__c
 }]]></ee:set-payload>
         </ee:message>
       </ee:transform>
+
+      <set-variable value="#[vars.payload.sfId == null ? 201 : 200]" doc:name="httpStatus" doc:id="d3d4a356-1b30-4ea3-bf48-82e66c597694" variableName="httpStatus"/>
       
-      <set-variable value="#[vars.payload.sfId == null ? 201 : 200]" doc:name="httpStatus" doc:id="176d1e86-0de7-492f-8888-7189baf6e534" variableName="httpStatus" />
-			<error-handler>
-        <on-error-propagate type="SALESFORCE:*" enableNotifications="true" logException="true" doc:name="Salesforce Error">
+      <error-handler>
+        <on-error-propagate type="*" enableNotifications="true" logException="true" doc:name="Error Handler">
           <ee:transform doc:name="Transform Error">
             <ee:message>
               <ee:set-payload><![CDATA[%dw 2.0
@@ -199,9 +194,8 @@ output application/json
 }]]></ee:set-payload>
             </ee:message>
           </ee:transform>
-					<set-variable value="500" doc:name="httpStatus" doc:id="ae7dd7b7-b5b4-41f1-a4d2-16c343451550" variableName="httpStatus" />
-        
-</on-error-propagate>
+          <set-variable value="500" doc:name="httpStatus" doc:id="d3d4a356-1b30-4ea3-bf48-82e66c597694" variableName="httpStatus"/>
+        </on-error-propagate>
       </error-handler>
     </try>
   </flow>
@@ -230,42 +224,27 @@ var accountSfId = payload.externalIds filter ($.system == "Salesforce") map ($.v
     </ee:transform>
 
     <try doc:name="Try">
-      <choice doc:name="Upsert Strategy">
-        <when expression="#[vars.payload.sfId != null]">
-          <!-- MOCK: Remplacement de l'appel Salesforce update par des données mockées -->
-          <ee:transform doc:name="Mock Update Transaction" doc:id="mock-update-sf-transaction">
-            <ee:message>
-              <ee:set-payload><![CDATA[%dw 2.0
+      <ee:transform doc:name="Mock Upsert Salesforce Transaction">
+        <ee:message>
+          <ee:set-payload><![CDATA[%dw 2.0
 output application/java
+var req = vars.payload
+var sfId = req.sfId default ("SF-TXN-" ++ (now() as String {format: "yyyyMMddHHmmssSSS"}))
 ---
+// Mock Salesforce upsert response
 [{
-  id: vars.payload.sfId,
+  id: sfId,
   success: true
 }]]]></ee:set-payload>
-            </ee:message>
-          </ee:transform>
-        </when>
-        <otherwise>
-          <!-- MOCK: Remplacement de l'appel Salesforce create par des données mockées -->
-          <ee:transform doc:name="Mock Create Transaction" doc:id="mock-create-sf-transaction">
-            <ee:message>
-              <ee:set-payload><![CDATA[%dw 2.0
-output application/java
----
-[{
-  id: "a0XX0000004TxnQAA" ++ randomInt(1000),
-  success: true
-}]]]></ee:set-payload>
-            </ee:message>
-          </ee:transform>
-        </otherwise>
-      </choice>
+        </ee:message>
+      </ee:transform>
 
       <ee:transform doc:name="Transform Response">
         <ee:message>
           <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 var result = payload[0]
+var transaction = vars.payload.transaction
 ---
 {
   id: null,
@@ -274,18 +253,19 @@ var result = payload[0]
     system: "Salesforce",
     value: result.id
   }],
-  transactionNumber: vars.payload.transaction.Name,
-  amount: vars.payload.transaction.Amount__c,
-  transactionDate: vars.payload.transaction.Transaction_Date__c,
-  transactionType: vars.payload.transaction.Type__c,
-  status: vars.payload.transaction.Status__c
+  transactionNumber: transaction.Name,
+  amount: transaction.Amount__c,
+  transactionDate: transaction.Transaction_Date__c,
+  transactionType: transaction.Type__c,
+  status: transaction.Status__c
 }]]></ee:set-payload>
         </ee:message>
       </ee:transform>
+
+      <set-variable value="#[vars.payload.sfId == null ? 201 : 200]" doc:name="httpStatus" doc:id="d3d4a356-1b30-4ea3-bf48-82e66c597694" variableName="httpStatus"/>
       
-      <set-variable value="#[vars.payload.sfId == null ? 201 : 200]" doc:name="httpStatus" doc:id="b6264cc0-4da6-476c-8727-8acce0d2366c" variableName="httpStatus" />
-			<error-handler>
-        <on-error-propagate type="SALESFORCE:*" enableNotifications="true" logException="true" doc:name="Salesforce Error">
+      <error-handler>
+        <on-error-propagate type="*" enableNotifications="true" logException="true" doc:name="Error Handler">
           <ee:transform doc:name="Transform Error">
             <ee:message>
               <ee:set-payload><![CDATA[%dw 2.0
@@ -300,9 +280,8 @@ output application/json
 }]]></ee:set-payload>
             </ee:message>
           </ee:transform>
-					<set-variable value="500" doc:name="httpStatus" doc:id="e2916e25-7e58-4cad-86d9-162371f2429f" variableName="httpStatus" />
-        
-</on-error-propagate>
+          <set-variable value="500" doc:name="httpStatus" doc:id="d3d4a356-1b30-4ea3-bf48-82e66c597694" variableName="httpStatus"/>
+        </on-error-propagate>
       </error-handler>
     </try>
   </flow>
@@ -329,42 +308,27 @@ var sfId = payload.externalIds filter ($.system == "Salesforce")[0].value defaul
     </ee:transform>
 
     <try doc:name="Try">
-      <choice doc:name="Upsert Strategy">
-        <when expression="#[vars.payload.sfId != null]">
-          <!-- MOCK: Remplacement de l'appel Salesforce update par des données mockées -->
-          <ee:transform doc:name="Mock Update Card" doc:id="mock-update-sf-card">
-            <ee:message>
-              <ee:set-payload><![CDATA[%dw 2.0
+      <ee:transform doc:name="Mock Upsert Salesforce Card">
+        <ee:message>
+          <ee:set-payload><![CDATA[%dw 2.0
 output application/java
+var req = vars.payload
+var sfId = req.sfId default ("SF-CARD-" ++ (now() as String {format: "yyyyMMddHHmmssSSS"}))
 ---
+// Mock Salesforce upsert response
 [{
-  id: vars.payload.sfId,
+  id: sfId,
   success: true
 }]]]></ee:set-payload>
-            </ee:message>
-          </ee:transform>
-        </when>
-        <otherwise>
-          <!-- MOCK: Remplacement de l'appel Salesforce create par des données mockées -->
-          <ee:transform doc:name="Mock Create Card" doc:id="mock-create-sf-card">
-            <ee:message>
-              <ee:set-payload><![CDATA[%dw 2.0
-output application/java
----
-[{
-  id: "a0XX0000004CrdQAA" ++ randomInt(1000),
-  success: true
-}]]]></ee:set-payload>
-            </ee:message>
-          </ee:transform>
-        </otherwise>
-      </choice>
+        </ee:message>
+      </ee:transform>
 
       <ee:transform doc:name="Transform Response">
         <ee:message>
           <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 var result = payload[0]
+var card = vars.payload.card
 ---
 {
   id: null,
@@ -373,17 +337,18 @@ var result = payload[0]
     system: "Salesforce",
     value: result.id
   }],
-  cardNumber: vars.payload.card.Card_Number__c,
-  cardType: vars.payload.card.Card_Type__c,
-  status: vars.payload.card.Status__c,
-  creditLimit: vars.payload.card.Credit_Limit__c
+  cardNumber: card.Card_Number__c,
+  cardType: card.Card_Type__c,
+  status: card.Status__c,
+  creditLimit: card.Credit_Limit__c
 }]]></ee:set-payload>
         </ee:message>
       </ee:transform>
+
+      <set-variable value="#[vars.payload.sfId == null ? 201 : 200]" doc:name="httpStatus" doc:id="d3d4a356-1b30-4ea3-bf48-82e66c597694" variableName="httpStatus"/>
       
-      <set-variable value="#[vars.payload.sfId == null ? 201 : 200]" doc:name="httpStatus" doc:id="ea87c09e-96ab-40a2-be79-05af1a9d9b36" variableName="httpStatus" />
-			<error-handler>
-        <on-error-propagate type="SALESFORCE:*" enableNotifications="true" logException="true" doc:name="Salesforce Error">
+      <error-handler>
+        <on-error-propagate type="*" enableNotifications="true" logException="true" doc:name="Error Handler">
           <ee:transform doc:name="Transform Error">
             <ee:message>
               <ee:set-payload><![CDATA[%dw 2.0
@@ -398,9 +363,8 @@ output application/json
 }]]></ee:set-payload>
             </ee:message>
           </ee:transform>
-					<set-variable value="500" doc:name="httpStatus" doc:id="703175b9-2ba8-430c-b506-40201e8bd102" variableName="httpStatus" />
-        
-</on-error-propagate>
+          <set-variable value="500" doc:name="httpStatus" doc:id="d3d4a356-1b30-4ea3-bf48-82e66c597694" variableName="httpStatus"/>
+        </on-error-propagate>
       </error-handler>
     </try>
   </flow>
