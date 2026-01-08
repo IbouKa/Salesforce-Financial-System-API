@@ -29,9 +29,36 @@ var customerSfId = payload.customerSfId default null
     </ee:transform>
 
     <try doc:name="Try">
-      <salesforce:query config-ref="Salesforce_Config" doc:name="Query Financial Accounts">
-        <salesforce:salesforce-query><![CDATA[#[payload.query]]]></salesforce:salesforce-query>
-      </salesforce:query>
+      <!-- MOCK: Remplacement de l'appel Salesforce query par des données mockées -->
+      <ee:transform doc:name="Mock Query Financial Accounts" doc:id="mock-query-sf-accounts">
+        <ee:message>
+          <ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+  totalSize: 2,
+  done: true,
+  records: [
+    {
+      Id: "a0XX0000004TmiQAAS",
+      AccountNumber: "ACC001",
+      Type: "Checking",
+      Name: "Compte Courant Principal",
+      Balance__c: 5000.00,
+      Status__c: "Active"
+    },
+    {
+      Id: "a0XX0000004TmiQAAT",
+      AccountNumber: "ACC002",
+      Type: "Savings",
+      Name: "Compte Épargne",
+      Balance__c: 10000.00,
+      Status__c: "Active"
+    }
+  ]
+}]]></ee:set-payload>
+        </ee:message>
+      </ee:transform>
 
       <ee:transform doc:name="Transform to Account Response">
         <ee:message>
@@ -104,25 +131,32 @@ var sfId = payload.externalIds filter ($.system == "Salesforce")[0].value defaul
     <try doc:name="Try">
       <choice doc:name="Upsert Strategy">
         <when expression="#[vars.payload.sfId != null]">
-          <salesforce:update config-ref="Salesforce_Config" doc:name="Update Financial Account">
-            <salesforce:salesforce-objects>
-              <salesforce:update-object>
-                <salesforce:id><![CDATA[#[vars.payload.sfId]]]></salesforce:id>
-                <salesforce:type>FinServ__FinancialAccount__c</salesforce:type>
-                <salesforce:fields><![CDATA[#[vars.payload.account]]]></salesforce:fields>
-              </salesforce:update-object>
-            </salesforce:salesforce-objects>
-          </salesforce:update>
+          <!-- MOCK: Remplacement de l'appel Salesforce update par des données mockées -->
+          <ee:transform doc:name="Mock Update Financial Account" doc:id="mock-update-sf-account">
+            <ee:message>
+              <ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+[{
+  id: vars.payload.sfId,
+  success: true
+}]]]></ee:set-payload>
+            </ee:message>
+          </ee:transform>
         </when>
         <otherwise>
-          <salesforce:create config-ref="Salesforce_Config" doc:name="Create Financial Account">
-            <salesforce:salesforce-objects>
-              <salesforce:create-object>
-                <salesforce:type>FinServ__FinancialAccount__c</salesforce:type>
-                <salesforce:fields><![CDATA[#[vars.payload.account]]]></salesforce:fields>
-              </salesforce:create-object>
-            </salesforce:salesforce-objects>
-          </salesforce:create>
+          <!-- MOCK: Remplacement de l'appel Salesforce create par des données mockées -->
+          <ee:transform doc:name="Mock Create Financial Account" doc:id="mock-create-sf-account">
+            <ee:message>
+              <ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+[{
+  id: "a0XX0000004TmiQAA" ++ randomInt(1000),
+  success: true
+}]]]></ee:set-payload>
+            </ee:message>
+          </ee:transform>
         </otherwise>
       </choice>
 
@@ -198,25 +232,32 @@ var accountSfId = payload.externalIds filter ($.system == "Salesforce") map ($.v
     <try doc:name="Try">
       <choice doc:name="Upsert Strategy">
         <when expression="#[vars.payload.sfId != null]">
-          <salesforce:update config-ref="Salesforce_Config" doc:name="Update Transaction">
-            <salesforce:salesforce-objects>
-              <salesforce:update-object>
-                <salesforce:id><![CDATA[#[vars.payload.sfId]]]></salesforce:id>
-                <salesforce:type>FinServ__FinancialAccountTransaction__c</salesforce:type>
-                <salesforce:fields><![CDATA[#[vars.payload.transaction]]]></salesforce:fields>
-              </salesforce:update-object>
-            </salesforce:salesforce-objects>
-          </salesforce:update>
+          <!-- MOCK: Remplacement de l'appel Salesforce update par des données mockées -->
+          <ee:transform doc:name="Mock Update Transaction" doc:id="mock-update-sf-transaction">
+            <ee:message>
+              <ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+[{
+  id: vars.payload.sfId,
+  success: true
+}]]]></ee:set-payload>
+            </ee:message>
+          </ee:transform>
         </when>
         <otherwise>
-          <salesforce:create config-ref="Salesforce_Config" doc:name="Create Transaction">
-            <salesforce:salesforce-objects>
-              <salesforce:create-object>
-                <salesforce:type>FinServ__FinancialAccountTransaction__c</salesforce:type>
-                <salesforce:fields><![CDATA[#[vars.payload.transaction]]]></salesforce:fields>
-              </salesforce:create-object>
-            </salesforce:salesforce-objects>
-          </salesforce:create>
+          <!-- MOCK: Remplacement de l'appel Salesforce create par des données mockées -->
+          <ee:transform doc:name="Mock Create Transaction" doc:id="mock-create-sf-transaction">
+            <ee:message>
+              <ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+[{
+  id: "a0XX0000004TxnQAA" ++ randomInt(1000),
+  success: true
+}]]]></ee:set-payload>
+            </ee:message>
+          </ee:transform>
         </otherwise>
       </choice>
 
@@ -290,25 +331,32 @@ var sfId = payload.externalIds filter ($.system == "Salesforce")[0].value defaul
     <try doc:name="Try">
       <choice doc:name="Upsert Strategy">
         <when expression="#[vars.payload.sfId != null]">
-          <salesforce:update config-ref="Salesforce_Config" doc:name="Update Card">
-            <salesforce:salesforce-objects>
-              <salesforce:update-object>
-                <salesforce:id><![CDATA[#[vars.payload.sfId]]]></salesforce:id>
-                <salesforce:type>FinServ__Card__c</salesforce:type>
-                <salesforce:fields><![CDATA[#[vars.payload.card]]]></salesforce:fields>
-              </salesforce:update-object>
-            </salesforce:salesforce-objects>
-          </salesforce:update>
+          <!-- MOCK: Remplacement de l'appel Salesforce update par des données mockées -->
+          <ee:transform doc:name="Mock Update Card" doc:id="mock-update-sf-card">
+            <ee:message>
+              <ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+[{
+  id: vars.payload.sfId,
+  success: true
+}]]]></ee:set-payload>
+            </ee:message>
+          </ee:transform>
         </when>
         <otherwise>
-          <salesforce:create config-ref="Salesforce_Config" doc:name="Create Card">
-            <salesforce:salesforce-objects>
-              <salesforce:create-object>
-                <salesforce:type>FinServ__Card__c</salesforce:type>
-                <salesforce:fields><![CDATA[#[vars.payload.card]]]></salesforce:fields>
-              </salesforce:create-object>
-            </salesforce:salesforce-objects>
-          </salesforce:create>
+          <!-- MOCK: Remplacement de l'appel Salesforce create par des données mockées -->
+          <ee:transform doc:name="Mock Create Card" doc:id="mock-create-sf-card">
+            <ee:message>
+              <ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+[{
+  id: "a0XX0000004CrdQAA" ++ randomInt(1000),
+  success: true
+}]]]></ee:set-payload>
+            </ee:message>
+          </ee:transform>
         </otherwise>
       </choice>
 
