@@ -4,7 +4,8 @@ version: 1.0.1
 mediaType: application/json
 
 documentation:
-  - title: Overview
+  -
+    title: Overview
     content: API système pour gérer les données financières dans Salesforce Financial Services Cloud
 
 types:
@@ -13,13 +14,11 @@ types:
     properties:
       id?: string
       globalId?: string
-      externalIds:
-        type: array
-        items:
-          type: object
-          properties:
-            system: string
-            value: string
+      externalId:
+        type: object
+        properties:
+          system: string
+          value: string
       accountNumber: string
       accountType: string
       accountName?: string
@@ -30,13 +29,12 @@ types:
     properties:
       id?: string
       globalId?: string
-      externalIds:
-        type: array
-        items:
-          type: object
-          properties:
-            system: string
-            value: string
+      externalId:
+        type: object
+        properties:
+          system: string
+          value: string
+      financialAccountId: string
       transactionNumber: string
       amount: number
       transactionDate: datetime
@@ -47,13 +45,13 @@ types:
     properties:
       id?: string
       globalId?: string
-      externalIds:
-        type: array
-        items:
-          type: object
-          properties:
-            system: string
-            value: string
+      externalId:
+        type: object
+        properties:
+          system: string
+          value: string
+      financialAccountId?: string
+      accountOwnerId?: string
       cardNumber: string
       cardType: string
       status?: string
@@ -70,7 +68,7 @@ types:
 /accounts:
   displayName: Financial Accounts
   description: Opérations sur les comptes financiers Salesforce
-  
+
   get:
     displayName: Get Accounts
     queryParameters:

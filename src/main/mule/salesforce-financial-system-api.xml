@@ -1,372 +1,330 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns="http://www.mulesoft.org/schema/mule/core"
-  xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-  xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-  http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+  http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
 
   <!-- GET /accounts - Business Logic Flow -->
   <flow name="get-accounts-business-logic" doc:name="get-accounts-business-logic">
     <ee:transform doc:name="Build SOQL Query">
       <ee:message>
-        <ee:set-payload><![CDATA[%dw 2.0
+        <ee:set-payload>
+          <![CDATA[%dw 2.0
 output application/java
 var sfId = payload.sfId default null
 var customerSfId = payload.customerSfId default null
 ---
 {
-  query: "SELECT Id, AccountNumber, Type, Name, Balance__c, Status__c FROM FinServ__FinancialAccount__c " ++
-         (if (sfId != null) "WHERE Id = '" ++ sfId ++ "' " 
-          else if (customerSfId != null) "WHERE FinServ__PrimaryOwner__c = '" ++ customerSfId ++ "' " 
+  query: "SELECT Id,FinancialAccountNumber,Type,Status,Name,TotalOutstandingAmount,SourceSystemIdentifier FROM FinancialAccount " ++
+         (if (sfId != null and sfId != "") "WHERE Id = '" ++ sfId ++ "' " 
+          else if (customerSfId != null and customerSfId != "") "WHERE Id in (select FinancialAccountId FROM FinancialAccountParty where AccountId= '" ++ customerSfId ++ "') " 
           else "") ++
          "LIMIT 200"
-}]]></ee:set-payload>
+}]]>
+        </ee:set-payload>
       </ee:message>
     </ee:transform>
-
-    <try doc:name="Try">
-      <ee:transform doc:name="Mock Query Salesforce Financial Accounts">
-        <ee:message>
-          <ee:set-payload><![CDATA[%dw 2.0
-output application/java
-var queryParams = payload
-var sfId = queryParams.sfId default null
-var customerSfId = queryParams.customerSfId default null
----
-// Mock Salesforce query response
-{
-  records: if (sfId != null and sfId != "")
-    [{
-      Id: sfId,
-      AccountNumber: "ACC-000001",
-      Type: "Checking",
-      Name: "Primary Checking Account",
-      Balance__c: 5000.00,
-      Status__c: "Active"
-    }]
-  else
-    [
-      {
-        Id: "SF-ACC-001",
-        AccountNumber: "ACC-000001",
-        Type: "Checking",
-        Name: "Primary Checking Account",
-        Balance__c: 5000.00,
-        Status__c: "Active"
-      },
-      {
-        Id: "SF-ACC-002",
-        AccountNumber: "ACC-000002",
-        Type: "Savings",
-        Name: "Savings Account",
-        Balance__c: 10000.00,
-        Status__c: "Active"
-      }
-    ],
-  totalSize: 2,
-  done: true
-}]]></ee:set-payload>
-        </ee:message>
-      </ee:transform>
-
-      <ee:transform doc:name="Transform to Account Response">
-        <ee:message>
-          <ee:set-payload><![CDATA[%dw 2.0
+    <salesforce:query-all doc:name="Query all" doc:id="4a907e25-a075-4364-808e-105d068aa21f" config-ref="Salesforce_Config">
+      <salesforce:salesforce-query>
+        <![CDATA[#[payload.query]]]>
+      </salesforce:salesforce-query>
+    </salesforce:query-all>
+    <ee:transform doc:name="Transform to Account Response">
+      <ee:message>
+        <ee:set-payload><![CDATA[%dw 2.0
 output application/json
-var records = payload.records default []
+var records = payload default []
 ---
 records map ((account) -> {
-  id: null,
-  globalId: null,
-  externalIds: [{
+  id: account.Id,
+  globalId: account.SourceSystemIdentifier,
+  externalIds: {
     system: "Salesforce",
-    value: account.Id
-  }],
-  accountNumber: account.AccountNumber,
-  accountType: account.Type default "Other",
-  accountName: account.Name default null,
-  balance: account.Balance__c default 0.00,
-  status: account.Status__c default "Active"
-})]]></ee:set-payload>
-        </ee:message>
-      </ee:transform>
-
-      <set-variable value="200" doc:name="httpStatus" doc:id="d3d4a356-1b30-4ea3-bf48-82e66c597694" variableName="httpStatus"/>
-      
-      <error-handler>
-        <on-error-propagate type="*" enableNotifications="true" logException="true" doc:name="Error Handler">
-          <ee:transform doc:name="Transform Error">
-            <ee:message>
-              <ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-  error: {
-    code: "SALESFORCE_ERROR",
-    message: "An error occurred while querying Salesforce",
-    timestamp: now()
-  }
-}]]></ee:set-payload>
-            </ee:message>
-          </ee:transform>
-          <set-variable value="500" doc:name="httpStatus" doc:id="d3d4a356-1b30-4ea3-bf48-82e66c597694" variableName="httpStatus"/>
-        </on-error-propagate>
-      </error-handler>
-    </try>
+    value: account.SourceSystemIdentifier
+  },
+  accountNumber: account.FinancialAccountNumber,
+  accountType: account.Type,
+  accountName: account.Name,
+  balance: account.TotalOutstandingAmount,
+  status: account.Status
+})]]>
+        </ee:set-payload>
+      </ee:message>
+    </ee:transform>
+    <set-variable value="200" doc:name="httpStatus" doc:id="d3d4a356-1b30-4ea3-bf48-82e66c597694" variableName="httpStatus" />
   </flow>
 
   <!-- POST /accounts - Business Logic Flow -->
   <flow name="upsert-account-business-logic" doc:name="upsert-account-business-logic">
     <ee:transform doc:name="Transform to Salesforce Format">
       <ee:message>
-        <ee:set-payload><![CDATA[%dw 2.0
+        <ee:set-payload>
+          <![CDATA[payload]]>
+        </ee:set-payload>
+      </ee:message>
+      <ee:variables>
+        <ee:set-variable variableName="data">
+          <![CDATA[%dw 2.0
 output application/java
-var sfId = payload.externalIds filter ($.system == "Salesforce")[0].value default null
+var sfId = payload.id default null
 ---
 {
   sfId: sfId,
   account: {
-    AccountNumber: payload.accountNumber,
+  	(id: sfId) if (sfId != null),
+    FinancialAccountNumber: payload.accountNumber,
     Type: payload.accountType,
     Name: payload.accountName default null,
-    Balance__c: payload.balance default 0.00,
-    Status__c: payload.status default "Active"
+    TotalOutstandingAmount: payload.balance default 0.00,
+    Status: payload.status default "Active",
+    SourceSystemIdentifier: payload.globalId default null
   }
-}]]></ee:set-payload>
-      </ee:message>
+}]]>
+        </ee:set-variable>
+      </ee:variables>
     </ee:transform>
 
-    <try doc:name="Try">
-      <ee:transform doc:name="Mock Upsert Salesforce Financial Account">
-        <ee:message>
-          <ee:set-payload><![CDATA[%dw 2.0
+    <ee:transform doc:name="Prepare Upsert Record">
+      <ee:message>
+        <ee:set-payload>
+          <![CDATA[%dw 2.0
 output application/java
-var req = vars.payload
-var sfId = req.sfId default ("SF-ACC-" ++ (now() as String {format: "yyyyMMddHHmmssSSS"}))
 ---
-// Mock Salesforce upsert response
-[{
-  id: sfId,
-  success: true
-}]]]></ee:set-payload>
-        </ee:message>
-      </ee:transform>
-
-      <ee:transform doc:name="Transform Response">
-        <ee:message>
-          <ee:set-payload><![CDATA[%dw 2.0
+[vars.data.account]]]>
+        </ee:set-payload>
+      </ee:message>
+    </ee:transform>
+    <salesforce:upsert objectType="FinancialAccount" doc:name="Upsert Financial Account" doc:id="upsert-account" config-ref="Salesforce_Config" externalIdFieldName="Id">
+      <salesforce:records>
+        <![CDATA[#[payload]]]>
+      </salesforce:records>
+    </salesforce:upsert>
+    <logger level="INFO" doc:name="Logger" doc:id="588f1c4f-77e3-45b0-8405-e4e86057075e" message="#[%dw 2.0&#10;output application/json&#10;---&#10;payload]" />
+    <choice doc:name="Choice" doc:id="f8919816-1fbe-494c-9c58-623413e6210d">
+      <when expression="#[payload.successful == true]">
+        <ee:transform doc:name="Transform Response">
+          <ee:message>
+            <ee:set-payload>
+              <![CDATA[%dw 2.0
 output application/json
-var result = payload[0]
-var account = vars.payload.account
+var id = payload.items[0].payload.id
+var account = vars.data.account
 ---
 {
-  id: null,
-  globalId: null,
+  id: id default account.id default null,
+  globalId: account.SourceSystemIdentifier,
   externalIds: [{
     system: "Salesforce",
-    value: result.id
+    value: account.SourceSystemIdentifier
   }],
-  accountNumber: account.AccountNumber,
+  accountNumber: account.FinancialAccountNumber,
   accountType: account.Type,
   accountName: account.Name,
-  balance: account.Balance__c,
-  status: account.Status__c
-}]]></ee:set-payload>
-        </ee:message>
-      </ee:transform>
-
-      <set-variable value="#[if(vars.payload.sfId == null) 201 else 200]" doc:name="httpStatus" doc:id="d3d4a356-1b30-4ea3-bf48-82e66c597694" variableName="httpStatus"/>
-      
-      <error-handler>
-        <on-error-propagate type="*" enableNotifications="true" logException="true" doc:name="Error Handler">
-          <ee:transform doc:name="Transform Error">
-            <ee:message>
-              <ee:set-payload><![CDATA[%dw 2.0
+  balance: account.TotalOutstandingAmount,
+  status: account.Status
+}]]>
+            </ee:set-payload>
+          </ee:message>
+        </ee:transform>
+        <set-variable value="#[if(vars.data.sfId == null) 201 else 200]" doc:name="httpStatus" doc:id="d3d4a356-1b30-4ea3-bf48-82e66c597694" variableName="httpStatus" />
+      </when>
+      <otherwise>
+        <ee:transform doc:name="Transform Message" doc:id="16fb763d-abae-4b28-91d8-ed70f9331c75">
+          <ee:message>
+            <ee:set-payload>
+              <![CDATA[%dw 2.0
 output application/json
 ---
 {
   error: {
-    code: "SALESFORCE_ERROR",
-    message: "An error occurred while upserting financial account in Salesforce",
+    code: "BAD_REQUEST",
+    message: payload.items[0].message default "Bad request",
     timestamp: now()
   }
-}]]></ee:set-payload>
-            </ee:message>
-          </ee:transform>
-          <set-variable value="500" doc:name="httpStatus" doc:id="d3d4a356-1b30-4ea3-bf48-82e66c597694" variableName="httpStatus"/>
-        </on-error-propagate>
-      </error-handler>
-    </try>
+}]]>
+            </ee:set-payload>
+          </ee:message>
+        </ee:transform>
+        <set-variable value="400" doc:name="httpStatus" doc:id="5159c6d9-eecc-46d2-9784-b9d2171c445a" variableName="httpStatus" />
+      </otherwise>
+    </choice>
   </flow>
 
-  <!-- POST /transactions - Upsert Transaction dans Salesforce -->
+  <!-- POST /transactions - Business Logic Flow -->
   <flow name="upsert-transaction-business-logic" doc:name="upsert-transaction-business-logic">
     <ee:transform doc:name="Transform to Salesforce Format">
       <ee:message>
-        <ee:set-payload><![CDATA[%dw 2.0
+        <ee:set-payload><![CDATA[payload]]>
+        </ee:set-payload>
+      </ee:message>
+      <ee:variables>
+        <ee:set-variable variableName="data"><![CDATA[%dw 2.0
 output application/java
-var sfId = payload.externalIds filter ($.system == "Salesforce")[0].value default null
-var accountSfId = payload.externalIds filter ($.system == "Salesforce") map ($.value) default []
+var sfId = payload.id default null
 ---
 {
   sfId: sfId,
   transaction: {
-    FinServ__FinancialAccount__c: accountSfId[0] default null,
+  	(id: sfId) if (sfId != null),
+    SourceSystemIdentifier: payload.globalId default null,
+    TransactionCode: payload.externalIds[0].system default null,
+    FinancialAccountId: payload.financialAccountId,
     Name: payload.transactionNumber,
-    Amount__c: payload.amount,
-    Transaction_Date__c: payload.transactionDate,
-    Type__c: payload.transactionType,
-    Status__c: payload.status default "Posted"
+    Amount: payload.amount,
+    DebitCreditIndicator: payload.transactionType,
+    TransactionDate: payload.transactionDate as DateTime,
+    Status: payload.status default "Posted"
   }
-}]]></ee:set-payload>
-      </ee:message>
+}]]>
+        </ee:set-variable>
+      </ee:variables>
     </ee:transform>
 
-    <try doc:name="Try">
-      <ee:transform doc:name="Mock Upsert Salesforce Transaction">
-        <ee:message>
-          <ee:set-payload><![CDATA[%dw 2.0
+    <ee:transform doc:name="Prepare Upsert Record">
+      <ee:message>
+        <ee:set-payload>
+          <![CDATA[%dw 2.0
 output application/java
-var req = vars.payload
-var sfId = req.sfId default ("SF-TXN-" ++ (now() as String {format: "yyyyMMddHHmmssSSS"}))
 ---
-// Mock Salesforce upsert response
-[{
-  id: sfId,
-  success: true
-}]]]></ee:set-payload>
-        </ee:message>
-      </ee:transform>
-
-      <ee:transform doc:name="Transform Response">
-        <ee:message>
-          <ee:set-payload><![CDATA[%dw 2.0
+[vars.data.transaction]]]>
+        </ee:set-payload>
+      </ee:message>
+    </ee:transform>
+    <salesforce:upsert objectType="FinancialAccountTransaction" doc:name="Upsert Financial Account Transaction" doc:id="upsert-transaction" config-ref="Salesforce_Config" externalIdFieldName="Id">
+    </salesforce:upsert>
+    <logger level="INFO" doc:name="Logger" doc:id="588f1c4f-77e3-45b0-8405-e4e86057075f" message="#[%dw 2.0&#10;output application/json&#10;---&#10;payload]" />
+    <choice doc:name="Choice" doc:id="f8919816-1fbe-494c-9c58-623413e6210e">
+      <when expression="#[payload.successful == true]">
+        <ee:transform doc:name="Transform Response">
+          <ee:message>
+            <ee:set-payload><![CDATA[%dw 2.0
 output application/json
-var result = payload[0]
-var transaction = vars.payload.transaction
+var id = payload.items[0].payload.id
+var transaction = vars.data.transaction
 ---
 {
-  id: null,
-  globalId: null,
-  externalIds: [{
-    system: "Salesforce",
-    value: result.id
-  }],
+  id: id default transaction.id default null,
+  globalId: transaction.SourceSystemIdentifier,
+  externalId: {
+    system: transaction.TransactionCode,
+    value: transaction.SourceSystemIdentifier
+  },
+  financialAccountId: transaction.FinancialAccountId,
   transactionNumber: transaction.Name,
-  amount: transaction.Amount__c,
-  transactionDate: transaction.Transaction_Date__c,
-  transactionType: transaction.Type__c,
-  status: transaction.Status__c
-}]]></ee:set-payload>
-        </ee:message>
-      </ee:transform>
-
-      <set-variable value="#[if(vars.payload.sfId == null) 201 else 200]" doc:name="httpStatus" doc:id="d3d4a356-1b30-4ea3-bf48-82e66c597694" variableName="httpStatus"/>
-      
-      <error-handler>
-        <on-error-propagate type="*" enableNotifications="true" logException="true" doc:name="Error Handler">
-          <ee:transform doc:name="Transform Error">
-            <ee:message>
-              <ee:set-payload><![CDATA[%dw 2.0
+  amount: transaction.Amount,
+  transactionDate: transaction.TransactionDate,
+  DebitCreditIndicator: transaction.Type,
+  status: transaction.Status
+}]]>
+            </ee:set-payload>
+          </ee:message>
+        </ee:transform>
+        <set-variable value="#[if(vars.data.sfId == null) 201 else 200]" doc:name="httpStatus" doc:id="d3d4a356-1b30-4ea3-bf48-82e66c597695" variableName="httpStatus" />
+      </when>
+      <otherwise>
+        <ee:transform doc:name="Transform Message" doc:id="16fb763d-abae-4b28-91d8-ed70f9331c76">
+          <ee:message>
+            <ee:set-payload>
+              <![CDATA[%dw 2.0
 output application/json
 ---
 {
   error: {
-    code: "SALESFORCE_ERROR",
-    message: "An error occurred while upserting transaction in Salesforce",
+    code: "BAD_REQUEST",
+    message: payload.items[0].message default "Bad request",
     timestamp: now()
   }
-}]]></ee:set-payload>
-            </ee:message>
-          </ee:transform>
-          <set-variable value="500" doc:name="httpStatus" doc:id="d3d4a356-1b30-4ea3-bf48-82e66c597694" variableName="httpStatus"/>
-        </on-error-propagate>
-      </error-handler>
-    </try>
+}]]>
+            </ee:set-payload>
+          </ee:message>
+        </ee:transform>
+        <set-variable value="400" doc:name="httpStatus" doc:id="5159c6d9-eecc-46d2-9784-b9d2171c445b" variableName="httpStatus" />
+      </otherwise>
+    </choice>
   </flow>
 
   <!-- POST /cards - Business Logic Flow -->
   <flow name="upsert-card-business-logic" doc:name="upsert-card-business-logic">
-    
+
     <ee:transform doc:name="Transform to Salesforce Format">
       <ee:message>
-        <ee:set-payload><![CDATA[%dw 2.0
+        <ee:set-payload><![CDATA[payload]]>
+        </ee:set-payload>
+      </ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="data" ><![CDATA[%dw 2.0
 output application/java
-var sfId = payload.externalIds filter ($.system == "Salesforce")[0].value default null
+var sfId = payload.id default null
 ---
 {
   sfId: sfId,
   card: {
-    Card_Number__c: payload.cardNumber,
-    Card_Type__c: payload.cardType,
-    Status__c: payload.status default "Active",
-    Credit_Limit__c: payload.creditLimit default null
-  }
-}]]></ee:set-payload>
-      </ee:message>
+  	(id: sfId) if (sfId != null),
+  	FinancialAccountId: payload.financialAccountId,
+  	AccountId: payload.accountOwnerId,
+    Name: payload.cardNumber,
+    Type: payload.cardType,
+    Status: payload.status default "Active",
+    SourceSystemIdentifier: payload.globalId default null
+    }
+}]]></ee:set-variable>
+			</ee:variables>
     </ee:transform>
 
-    <try doc:name="Try">
-      <ee:transform doc:name="Mock Upsert Salesforce Card">
-        <ee:message>
-          <ee:set-payload><![CDATA[%dw 2.0
+    <ee:transform doc:name="Prepare Upsert Record">
+            <ee:message>
+              <ee:set-payload><![CDATA[%dw 2.0
 output application/java
-var req = vars.payload
-var sfId = req.sfId default ("SF-CARD-" ++ (now() as String {format: "yyyyMMddHHmmssSSS"}))
 ---
-// Mock Salesforce upsert response
-[{
-  id: sfId,
-  success: true
-}]]]></ee:set-payload>
-        </ee:message>
-      </ee:transform>
-
-      <ee:transform doc:name="Transform Response">
+[vars.data.card]]]>
+              </ee:set-payload>
+            </ee:message>
+          </ee:transform>
+		<salesforce:upsert objectType="IssuedCard" doc:name="Upsert Issue Card" doc:id="2f047abd-09a0-4fce-a317-90ee4513a99d" config-ref="Salesforce_Config" externalIdFieldName="Id"/>
+		<choice doc:name="Choice" doc:id="40dbd1a3-2636-4819-8d0a-76ac706a97bf" >
+			<when expression="#[payload.successful == true]">
+				<ee:transform doc:name="Transform Response">
         <ee:message>
           <ee:set-payload><![CDATA[%dw 2.0
 output application/json
-var result = payload[0]
-var card = vars.payload.card
+var id = payload.items[0].payload.id
+var card = vars.data.card
 ---
 {
-  id: null,
-  globalId: null,
-  externalIds: [{
+  id: id default card.id default null,
+  globalId: card.SourceSystemIdentifier,
+  externalIds: {
     system: "Salesforce",
-    value: result.id
-  }],
-  cardNumber: card.Card_Number__c,
-  cardType: card.Card_Type__c,
-  status: card.Status__c,
-  creditLimit: card.Credit_Limit__c
-}]]></ee:set-payload>
+    value: card.SourceSystemIdentifier
+  },
+  financialAccountId: card.FinancialAccountId,
+  accountOwnerId: card.AccountId,
+  cardNumber: card.Name,
+  cardType: card.Type,
+  status: card.Status,
+  creditLimit: 0
+}]]>
+          </ee:set-payload>
         </ee:message>
       </ee:transform>
-
-      <set-variable value="#[if(vars.payload.sfId == null) 201 else 200]" doc:name="httpStatus" doc:id="d3d4a356-1b30-4ea3-bf48-82e66c597694" variableName="httpStatus"/>
-      
-      <error-handler>
-        <on-error-propagate type="*" enableNotifications="true" logException="true" doc:name="Error Handler">
-          <ee:transform doc:name="Transform Error">
-            <ee:message>
-              <ee:set-payload><![CDATA[%dw 2.0
+				<set-variable value="#[if(vars.payload.sfId == null) 201 else 200]" doc:name="httpStatus" doc:id="d3d4a356-1b30-4ea3-bf48-82e66c597694" variableName="httpStatus" />
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="b04e844d-f565-4acc-9d73-b80d4a53bfad" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
 output application/json
 ---
 {
   error: {
-    code: "SALESFORCE_ERROR",
-    message: "An error occurred while upserting card in Salesforce",
+    code: "BAD_REQUEST",
+    message: payload.items[0].message default "Bad request",
     timestamp: now()
   }
 }]]></ee:set-payload>
-            </ee:message>
-          </ee:transform>
-          <set-variable value="500" doc:name="httpStatus" doc:id="d3d4a356-1b30-4ea3-bf48-82e66c597694" variableName="httpStatus"/>
-        </on-error-propagate>
-      </error-handler>
-    </try>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
   </flow>
 
 </mule>
