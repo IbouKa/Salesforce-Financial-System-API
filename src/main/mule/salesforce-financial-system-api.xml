@@ -323,7 +323,9 @@ output application/json
 }]]></ee:set-payload>
 					</ee:message>
 				</ee:transform>
-			</otherwise>
+				<set-variable value="400" doc:name="httpStatus" doc:id="ae80f771-fea1-4376-a455-e15184407093" variableName="httpStatus"/>
+			
+</otherwise>
 		</choice>
   </flow>
 

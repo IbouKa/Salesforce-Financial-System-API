@@ -181,7 +181,7 @@ output application/json
 {
   error: {
     code: "NOT_ACCEPTABLE",
-    message: "Content type not acceptable",
+    message: error.description default "Content type not acceptable",
     timestamp: now()
   }
 }]]></ee:set-payload>
@@ -198,7 +198,7 @@ output application/json
 {
   error: {
     code: "UNSUPPORTED_MEDIA_TYPE",
-    message: "Unsupported media type",
+    message: error.description default "Unsupported media type",
     timestamp: now()
   }
 }]]></ee:set-payload>
@@ -215,7 +215,7 @@ output application/json
 {
   error: {
     code: "METHOD_NOT_ALLOWED",
-    message: "Method not allowed",
+    message: error.description default "Method not allowed",
     timestamp: now()
   }
 }]]></ee:set-payload>
