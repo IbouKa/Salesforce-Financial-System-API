@@ -168,7 +168,7 @@ var sfId = payload.id default null
     SourceSystemIdentifier: payload.globalId default null,
     TransactionCode: payload.externalIds[0].system default null,
     FinancialAccountId: payload.financialAccountId,
-    Name: payload.transactionNumber,
+    Name__c: payload.transactionNumber,
     Amount: payload.amount,
     DebitCreditIndicator: payload.transactionType,
     TransactionDate: payload.transactionDate as DateTime,
@@ -209,7 +209,7 @@ var transaction = vars.data.transaction
     value: transaction.SourceSystemIdentifier
   },
   financialAccountId: transaction.FinancialAccountId,
-  transactionNumber: transaction.Name,
+  transactionNumber: transaction.Name__c,
   amount: transaction.Amount,
   transactionDate: transaction.TransactionDate,
   DebitCreditIndicator: transaction.Type,
@@ -261,7 +261,7 @@ var sfId = payload.id default null
   	(id: sfId) if (sfId != null),
   	FinancialAccountId: payload.financialAccountId,
   	AccountId: payload.accountOwnerId,
-    Name: payload.cardNumber,
+    Name__c: payload.cardNumber,
     Type: payload.cardType,
     Status: payload.status default "Active",
     SourceSystemIdentifier: payload.globalId default null
@@ -298,7 +298,7 @@ var card = vars.data.card
   },
   financialAccountId: card.FinancialAccountId,
   accountOwnerId: card.AccountId,
-  cardNumber: card.Name,
+  cardNumber: card.Name__c,
   cardType: card.Type,
   status: card.Status,
   creditLimit: 0

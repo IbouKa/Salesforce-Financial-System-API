@@ -43,3 +43,5 @@ Thumbs.db
 .tooling-project
 
 *config.properties.example
+
+src/test/*
